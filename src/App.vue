@@ -29,6 +29,7 @@ import Vue from "vue"
 import GridMain from "./gridLayoutMain.vue"
 import GridSetting from "./GridSetting.vue"
 
+// ofje
 
 export default {
   name: 'app',
