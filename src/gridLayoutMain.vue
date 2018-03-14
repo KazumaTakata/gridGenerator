@@ -6,7 +6,7 @@
     </div>
 
   <div class="handleBar" :style="handleBarStyle" v-on:mousemove="HandleMouseMove" v-on:mouseup="HandleMouseUp">
-  <div class="Window" v-bind:style="this.$store.state.gridStyle">
+  <div class="Window" v-bind:style="getGridStyle">
     <template v-for="(i, index) in getArea">
       <div v-bind:id="index" v-on:mouseup="DragStop" v-on:mousemove="DragMove" v-on:mousedown="DragStart" v-on:contextmenu="GridClick" class="box">{{i}}</div>
     </template>
@@ -14,8 +14,8 @@
         <div class="contextmenuElement" v-bind:id="i" v-on:click="contextmenuClick" v-for="i in this.$store.state.ElementIds">{{i}}</div>
     </div>
   </div>
-  <div v-on:mousedown="rightHandleMouseDown" class="rightHangle"></div>
-  <div v-on:mousedown="bottomHandleMouseDown" class="bottomHangle"></div>
+  <div :style="{visibility: handleVisibility}" v-on:mousedown="rightHandleMouseDown" class="rightHangle"></div>
+  <div :style="{visibility: handleVisibility}" v-on:mousedown="bottomHandleMouseDown" class="bottomHangle"></div>
   </div>
   </div>
 </template>
@@ -26,6 +26,7 @@ export default {
 
   data () {
     return {
+
       addElementId: "",
       ElementIds: [],
       contextmenuData: {top: "", left: "", visible: "hidden"},
@@ -53,17 +54,37 @@ export default {
     }
   },
   computed: {
+    handleVisibility: function(){
+      if(this.$store.state.gridLayout[this.$store.state.activeLayout]){
+      if (this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle.height != "" && this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle.width != ""){
+          return "visible"
+      }else{
+          return "hidden"
+      }
+    }else{
+      return "hidden"
+    }
+
+    },
+    getGridStyle: function(){
+      if (typeof this.$store.state.gridLayout[this.$store.state.activeLayout] != "undefined"){
+            return this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle
+      }
+    },
     getArea: function(){
       let newArr = [];
-      for(var i = 0; i < this.$store.state.gridAreas.length; i++)
+      if (typeof this.$store.state.gridLayout[this.$store.state.activeLayout] != "undefined"){
+      for(var i = 0; i < this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas.length; i++)
       {
-          newArr = newArr.concat(this.$store.state.gridAreas[i])
+          newArr = newArr.concat(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[i])
+      }
       }
       return newArr
     },
     handleBarStyle: function(){
-      let mainHeight = this.$store.state.gridStyle.height
-      let mainWidth = this.$store.state.gridStyle.width
+      if (this.$store.state.gridLayout[this.$store.state.activeLayout]){
+      let mainHeight = this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle.height
+      let mainWidth = this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle.width
 
       let styleObj = {
         display: "grid",
@@ -71,6 +92,7 @@ export default {
         gridTemplateRows: mainHeight + " 10px"
       }
       return styleObj
+      }
       }
   },
   methods: {
@@ -96,35 +118,60 @@ export default {
           id: this.handleTickEvent.activeId,
           diffX
         }
-        // this.tickXValue[e.id] = this.tickXValue[e.id] + diffX
-        this.$store.commit("moveTick", obj)
-        // Vue.set(this.$store.state.tickXValue, this.handleTickEvent.activeId, this.$store.state.tickXValue[this.handleTickEvent.activeId] + diffX)
 
+        this.$store.commit("moveTick", obj)
         this.handleTickEvent.prevX = e.clientX
       }
+    },
+    checkCondition(cmax, cmin, cposition, diffx){
+        if (cmax == "" && cmin == ""){
+          return true
+        }
+        if(typeof cmax != "undefined" && typeof cmin != "undefined"){
+          if(cmax > Number(cposition) + diffx && cmin < Number(cposition) + diffx ){
+            return true
+          }else{
+            return false
+          }
+        }
+        if(typeof cmax == "undefined"){
+          if(cmin <= Number(cposition) + diffx){
+            return true
+          }else{
+            return false
+          }
+        }
+        if(typeof cmin == "undefined"){
+          if(cmax >= Number(cposition) + diffx){
+            return true
+          }else{
+            return false
+          }
+        }
+
     },
     HandleMouseMove(e){
       if(this.handleEvent.active){
         console.log("right handle move")
         let currentX = e.clientX
         let currentY = e.clientY
+        let CpositionX = this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle.width.split("px")[0]
+        let CpositionY = this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle.height.split("px")[0]
 
         if (this.handleEvent.RightOrBottom == "Right"){
+        let diffX = currentX - this.handleEvent.prevX
 
-          let diffX = currentX - this.handleEvent.prevX
-          // let diffY = currentY - this.handleEvent.prevY
-          // this.$store.state.gridStyle.width = Number(this.$store.state.gridStyle.width.split("px")[0]) + diffX + "px"
-          this.$store.commit("changeGridWidth",Number(this.$store.state.gridStyle.width.split("px")[0]) + diffX + "px")
-          console.log(this.$store.state.gridStyle.width)
+        let Cmax = this.$store.state.gridLayout[this.$store.state.activeLayout].maxX
+        let Cmin = this.$store.state.gridLayout[this.$store.state.activeLayout].minX
+
+        if(this.checkCondition(Cmax, Cmin, CpositionX, diffX))
+          {
+          this.$store.commit("changeGridWidth",Number(CpositionX) + diffX + "px")
           this.handleEvent.prevX = currentX
-
+        }
         }else{
           let diffY = currentY - this.handleEvent.prevY
-          console.log()
-          // let diffY = currentY - this.handleEvent.prevY
-          // this.$store.state.gridStyle.width = Number(this.$store.state.gridStyle.width.split("px")[0]) + diffX + "px"
-          this.$store.commit("changeGridHeight",Number(this.$store.state.gridStyle.height.split("px")[0]) + diffY + "px")
-          console.log(this.$store.state.gridStyle.height)
+          this.$store.commit("changeGridHeight",Number(CpositionY) + diffY + "px")
           this.handleEvent.prevY = currentY
         }
       }
@@ -142,7 +189,6 @@ export default {
       this.handleEvent.RightOrBottom = "Bottom"
     },
     HandleMouseUp(e){
-      console.log("right handle Up")
       this.handleEvent.active = false
     },
     gridMapCal(d){
@@ -151,13 +197,9 @@ export default {
     contextmenuClick(e){
       e.stopPropagation()
       this.contextmenuData.visible = "hidden"
-      console.log(e.target.id)
-      // this.gridAreas[this.activeXY.y][this.activeXY.x] = e.target.id
-      // Vue.set(this.gridAreas, [this.activeXY.y, this.activeXY.x], e.target.id)
       this.selectCell(this.activeXY.y, this.activeXY.x, e.target.id)
       this.$store.commit("changeGridAreas", {row:this.activeXY.y, col: this.activeXY.x, newValue: e.target.id})
-      // this.gridStyle.gridTemplateAreas = this.gridMapCal(this.$store.state.gridAreas)
-      this.$store.commit("changeGridTemplateAreas", this.gridMapCal(this.$store.state.gridAreas))
+      this.$store.commit("changeGridTemplateAreas", this.gridMapCal(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas))
     },
     difffind(arr){
       let diffList = []
@@ -172,10 +214,9 @@ export default {
     },
     validateGridArea(){
       let Valid = true
-      console.log("area")
-      for (let i=0; i<this.$store.state.gridAreas.length-1; i++){
-      let prevDiffList = this.difffind(this.$store.state.gridAreas[i])
-      let DiffList = this.difffind(this.$store.state.gridAreas[i+1])
+      for (let i=0; i<this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas.length-1; i++){
+      let prevDiffList = this.difffind(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[i])
+      let DiffList = this.difffind(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[i+1])
       for(let j=0; j<DiffList.length; j++){
       if (Valid){
         let startIdx = DiffList[j][0]
@@ -183,14 +224,14 @@ export default {
         if (j+1 != DiffList.length){
           endIdx = DiffList[j+1][0]
         }else{
-          endIdx = this.$store.state.gridAreas[i].length
+          endIdx = this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[i].length
         }
         let elementKind = DiffList[j][1]
         let containeSame = false
         let allSame = true
         if(elementKind != "."){
         for(let k=startIdx; k<endIdx; k++){
-          if(this.$store.state.gridAreas[i][k] == elementKind){
+          if(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[i][k] == elementKind){
             containeSame = true
           }else{
             allSame= false
@@ -200,7 +241,7 @@ export default {
           Valid = false
         }
         if (containeSame && allSame){
-          if (this.$store.state.gridAreas[i][startIdx-1] != elementKind && this.$store.state.gridAreas[i][endIdx] != elementKind){
+          if (this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[i][startIdx-1] != elementKind && this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[i][endIdx] != elementKind){
           }else{
             Valid = false
           }
@@ -230,15 +271,16 @@ export default {
     },
     DragStop(e){
       console.log("stop")
-      let tmpState = this.$store.state.gridAreas.map(function(arr) {
-    return arr.slice();})
+      let tmpState = this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas.map(function(arr) {
+        return arr.slice();})
+
       for(let i=0; i<this.dragState.ids.length; i++){
-          let rowNum = Math.floor(this.dragState.ids[i]/this.$store.state.NumberOfColumn)
-          let columnNum = this.dragState.ids[i] % this.$store.state.NumberOfColumn
+          let rowNum = Math.floor(this.dragState.ids[i]/this.$store.state.gridLayout[this.$store.state.activeLayout].NumberOfColumn)
+          let columnNum = this.dragState.ids[i] % this.$store.state.gridLayout[this.$store.state.activeLayout].NumberOfColumn
           this.selectCell(rowNum, columnNum, this.dragState.ElementKind)
           this.$store.commit("changeGridAreas", {row: rowNum, col:columnNum, newValue: this.dragState.ElementKind})
       }
-      this.$store.commit("changeGridTemplateAreas", this.gridMapCal(this.$store.state.gridAreas))
+      this.$store.commit("changeGridTemplateAreas", this.gridMapCal(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas))
       this.dragState.ids = []
       this.dragState.on = false
       let valid = this.validateGridArea()
@@ -246,9 +288,9 @@ export default {
         Vue.toast('InValid GridLayout', {horizontalPosition: 'center',
                   verticalPosition: 'center',
                   duration: 3000,})
-        this.$store.state.gridAreas = tmpState
+        this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas = tmpState
         this.$store.commit("changeAll", tmpState)
-        this.$store.commit("changeGridTemplateAreas", this.gridMapCal(this.$store.state.gridAreas))
+        this.$store.commit("changeGridTemplateAreas", this.gridMapCal(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas))
       }
     },
     GridClick(e){
@@ -257,18 +299,18 @@ export default {
       this.contextmenuData.top = e.clientY
       this.contextmenuData.left = e.clientX
       this.contextmenuData.visible = "visible"
-      let rowNum = Math.floor(e.target.id/this.$store.state.NumberOfColumn)
-      let columnNum = e.target.id % this.$store.state.NumberOfColumn
+      let rowNum = Math.floor(e.target.id/this.$store.state.gridLayout[this.$store.state.activeLayout].NumberOfColumn)
+      let columnNum = e.target.id % this.$store.state.gridLayout[this.$store.state.activeLayout].NumberOfColumn
       this.activeXY.x = columnNum
       this.activeXY.y = rowNum
     },
     selectCell(row, col, newValue) {
-      const newRow = this.$store.state.gridAreas[row].slice(0)
+      const newRow = this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas[row].slice(0)
       newRow[col] = newValue
-      this.$set(this.$store.state.gridAreas, row, newRow)
+      this.$set(this.$store.state.gridLayout[this.$store.state.activeLayout].gridAreas, row, newRow)
     },
     gridStyleMethod(){
-      return this.$store.state.gridStyle
+      return this.$store.state.gridLayout[this.$store.state.activeLayout].gridStyle
     }
   }
 }
@@ -294,13 +336,16 @@ export default {
   top: 50px;
 }
 .handleBar{
-  height:100%
+  height:100%;
+  /* visibility: hidden; */
 }
 .rightHangle{
   background: green;
+
 }
 .bottomHangle{
   background: green;
+
 }
 
 </style>

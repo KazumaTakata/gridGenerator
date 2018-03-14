@@ -3,6 +3,7 @@
     <div class="element"  v-bind:style="{gridArea: i}" v-for="(i, index) in this.$store.state.ElementIds">
         {{i}}
     </div>
+
   </div>
 </template>
 
@@ -12,7 +13,8 @@ export default {
 
   computed:{
     gridStyleMethod: function(){
-      return this.$store.state.gridStyle
+      this.$store.state.gridLayout
+      return
     }
   }
 }
